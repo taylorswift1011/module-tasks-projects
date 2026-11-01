@@ -109,12 +109,12 @@ final class TasksApiTest extends TestCase
         $this->assertListReturns([$pricing->id], '?search=Pricing');
     }
 
-    public function test_the_list_opens_by_number_and_sorts_by_every_supported_key(): void
+    public function test_the_list_opens_newest_first_and_sorts_by_every_supported_key(): void
     {
         $this->fourTasks();
 
-        self::assertSame(['zebra', 'apple', 'Mango', 'berry'], $this->names(''));
-        self::assertSame(['berry', 'Mango', 'apple', 'zebra'], $this->names('sort_by=number&sort_order=desc'));
+        self::assertSame(['berry', 'Mango', 'apple', 'zebra'], $this->names(''));
+        self::assertSame(['zebra', 'apple', 'Mango', 'berry'], $this->names('sort_by=number&sort_order=asc'));
         self::assertSame(['apple', 'berry', 'Mango', 'zebra'], $this->names('sort_by=name'));
         self::assertSame(['zebra', 'Mango', 'berry', 'apple'], $this->names('sort_by=name&sort_order=desc'));
         self::assertSame(['apple', 'berry', 'zebra', 'Mango'], $this->names('sort_by=due_date'));
@@ -450,10 +450,10 @@ final class TasksApiTest extends TestCase
         $billed = $this->makeTask(self::COMPANY, ['task_status_id' => $status->id, 'name' => 'Billed']);
         $this->makeEntry(self::COMPANY, (int) $billed->id, ['invoice_id' => 77]);
 
-        $this->assertListReturns([$unbilled->id, $partly->id], '?invoiced=0');
+        $this->assertListReturns([$partly->id, $unbilled->id], '?invoiced=0');
         $this->assertListReturns([$billed->id], '?invoiced=1');
         $this->assertListReturns(
-            [$untouched->id, $unbilled->id, $partly->id, $billed->id],
+            [$billed->id, $partly->id, $unbilled->id, $untouched->id],
             '',
         );
     }

@@ -182,6 +182,6 @@ final class TaskServiceTest extends TestCase
 
         self::assertSame(2, $this->tasks->listFor(self::COMPANY, ['project_id' => (int) $project->id])->count());
         self::assertSame(1, $this->tasks->listFor(self::COMPANY, ['assignee_id' => 8])->count());
-        self::assertSame(['Landing page', 'Pricing page'], $this->tasks->listFor(self::COMPANY, ['search' => 'page'])->pluck('name')->all());
+        self::assertSame(['Pricing page', 'Landing page'], $this->tasks->listFor(self::COMPANY, ['search' => 'page'])->pluck('name')->all());
     }
 }

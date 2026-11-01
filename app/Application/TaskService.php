@@ -33,10 +33,10 @@ final class TaskService
      */
     public const SORT_KEYS = ['number', 'name', 'priority', 'due_date', 'created_at'];
 
-    /** The per-company sequence, which is the order people refer to tasks in. */
+    /** The per-company sequence, which is the order people refer to tasks in; the newest comes first. */
     public const DEFAULT_SORT_KEY = 'number';
 
-    public const DEFAULT_SORT_ORDER = 'asc';
+    public const DEFAULT_SORT_ORDER = 'desc';
 
     /** @var list<string> */
     private const FIELDS = [
