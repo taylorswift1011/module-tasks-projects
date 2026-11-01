@@ -35,6 +35,7 @@ export const HOST_BILLING_API = {
   bootstrap: '/api/v1/bootstrap',
   customer: (customerId: number): string => `/api/v1/customers/${customerId}`,
   invoices: '/api/v1/invoices',
+  taxType: (taxTypeId: number): string => `/api/v1/tax-types/${taxTypeId}`,
   invoiceTemplates: '/api/v1/invoices/templates',
   nextNumber: '/api/v1/next-number',
   exchangeRate: (currencyId: number): string => `/api/v1/currencies/${currencyId}/exchange-rate`,
@@ -232,5 +233,30 @@ export async function fetchCompanyInvoiceDefaults(
     // is what an older company with no stored value expects.
     autoGenerateNumber: settings.invoice_auto_generate !== 'NO',
     defaultTemplate: typeof template === 'string' && template !== '' ? template : null,
+    taxPerItem: settings.tax_per_item === 'YES',
   }
+}
+
+/** A host tax type, as far as an invoice line needs it. */
+export interface HostTaxType {
+  id: number
+  name: string
+  percent: number | string | null
+  calculation_type: string | null
+  fixed_amount: number | null
+  compound_tax: boolean | number | null
+}
+
+/**
+ * One of the company's tax types, read from the host.
+ *
+ * The rate is read here rather than stored in the module, so changing GST in
+ * the host's tax settings is all it takes for the next invoice to follow.
+ */
+export async function fetchTaxType(client: AxiosInstance, taxTypeId: number): Promise<HostTaxType> {
+  const { data } = await client.get<{ data?: HostTaxType } & Partial<HostTaxType>>(
+    HOST_BILLING_API.taxType(taxTypeId),
+  )
+
+  return (data.data ?? data) as HostTaxType
 }

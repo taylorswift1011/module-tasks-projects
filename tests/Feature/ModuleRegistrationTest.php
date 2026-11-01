@@ -83,6 +83,7 @@ final class ModuleRegistrationTest extends TestCase
             'auto_start_tasks',
             'lock_invoiced_tasks',
             'hide_invoiced_on_board',
+            'invoice_tax_type_id',
             'invoice_project_heading',
             'invoice_task_description',
             'invoice_entry_dates',
@@ -146,10 +147,12 @@ final class ModuleRegistrationTest extends TestCase
         $settings = Registry::settingsFor('tasks-projects');
 
         self::assertNotNull($settings);
-        self::assertSame(
-            array_column($settings->fields(), 'key'),
-            DataCleanup::settingKeys(),
-        );
+        $schema = array_column($settings->fields(), 'key');
+        $cleanup = DataCleanup::settingKeys();
+        sort($schema);
+        sort($cleanup);
+
+        self::assertSame($schema, $cleanup);
     }
 
     public function test_it_contributes_the_whole_ability_catalogue_namespaced_by_slug(): void

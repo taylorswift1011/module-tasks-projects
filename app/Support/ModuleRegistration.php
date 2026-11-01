@@ -113,6 +113,13 @@ final class ModuleRegistration
                 [
                     'title' => 'tasksprojects::settings.invoice_section',
                     'fields' => [
+                        [
+                            'key' => 'invoice_tax_type_id',
+                            'type' => FieldType::Number->value,
+                            'label' => 'tasksprojects::settings.invoice_tax_type_id',
+                            'default' => 0,
+                            'rules' => ['integer', 'min:0'],
+                        ],
                         self::switchField('invoice_project_heading'),
                         self::switchField('invoice_task_description'),
                         self::switchField('invoice_entry_dates'),

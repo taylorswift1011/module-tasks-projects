@@ -45,7 +45,7 @@ final class BillingService
     public const SUMMARY_LABEL = 'Time';
 
     /** The grouping a selection falls back to when the caller names none. */
-    public const DEFAULT_GROUPING = 'task';
+    public const DEFAULT_GROUPING = 'project';
 
     public function __construct(
         private readonly CompanyDataReader $companyData,
@@ -167,7 +167,7 @@ final class BillingService
      * the company's own defaults before it posts.
      *
      * @param  'task'|'project'|'member'|'summary'  $grouping
-     * @return array{invoice_date: string, customer_id: int, currency_id: int|null, discount: int, discount_type: string, discount_val: int, tax: int, sub_total: int, total: int, notes: string|null, template_name: string|null, taxes: list<array<string, mixed>>, items: list<array{name: string, description: string|null, quantity: float, price: int, discount_type: string, discount: int, discount_val: int, tax: int, taxes: list<array<string, mixed>>, total: int}>, groups: list<array{entry_ids: list<int>}>}
+     * @return array{invoice_date: string, customer_id: int, currency_id: int|null, discount: int, discount_type: string, discount_val: int, tax: int, sub_total: int, total: int, notes: string|null, template_name: string|null, taxes: list<array<string, mixed>>, tax_type_id: int|null, items: list<array{name: string, description: string|null, quantity: float, price: int, discount_type: string, discount: int, discount_val: int, tax: int, taxes: list<array<string, mixed>>, total: int}>, groups: list<array{entry_ids: list<int>}>}
      */
     public function prepare(int $companyId, BillingSelection $selection, string $grouping = self::DEFAULT_GROUPING): array
     {
@@ -184,6 +184,7 @@ final class BillingService
 
         $labels = $this->labelsFor($companyId, $entries, $tasks);
         $options = $this->settings->invoiceLineOptions($companyId);
+        $timezone = $this->settings->timezone($companyId);
         $byId = $entries->keyBy(static fn (TimeEntry $entry): int => (int) $entry->id);
 
         $items = [];
@@ -203,12 +204,16 @@ final class BillingService
             $total = (int) round($quantity * $price);
 
             $items[] = [
-                'name' => $this->composer->name((string) $row['label'], $task),
+                'name' => $grouping === 'project'
+                    ? $this->composer->projectLineName((string) $row['label'], $rowEntries, $timezone)
+                    : $this->composer->name((string) $row['label'], $task),
                 'description' => $this->composer->description(
                     $rowEntries,
                     $options,
                     $this->projectNameFor($grouping, $row, $rowEntries, $task, $labels),
                     $task?->description === null ? null : (string) $task->description,
+                    $timezone,
+                    $grouping === 'task' ? null : $labels['task'],
                 ),
                 'quantity' => $quantity,
                 'price' => $price,
@@ -236,6 +241,7 @@ final class BillingService
             'notes' => null,
             'template_name' => null,
             'taxes' => [],
+            'tax_type_id' => $this->settings->invoiceTaxTypeId($companyId),
             'items' => $items,
             'groups' => $groups,
         ];

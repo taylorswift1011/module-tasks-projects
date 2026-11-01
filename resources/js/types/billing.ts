@@ -127,6 +127,8 @@ export interface PreparedInvoice {
   notes: string | null
   template_name: string | null
   taxes: unknown[]
+  /** The host tax type the company charges on time lines, or null for none. */
+  tax_type_id?: number | null
   items: PreparedItem[]
   groups: { entry_ids: number[] }[]
 }
@@ -207,6 +209,8 @@ export interface CompanyInvoiceDefaults {
   setDueDateAutomatically: boolean
   autoGenerateNumber: boolean
   defaultTemplate: string | null
+  /** Whether the company charges tax on each line rather than once on the invoice. */
+  taxPerItem: boolean
 }
 
 /** One line of the confirmation, pairing a created line with its entries. */

@@ -138,7 +138,7 @@ final class BillingApiTest extends TestCase
             ['entry_ids' => [(int) $second->id]],
         ]);
 
-        $this->prepare($ids, 'project')->assertJsonPath('data.items.0.name', 'Website')->assertJsonPath('data.items.0.quantity', 2.5);
+        $this->prepare($ids, 'project')->assertJsonPath('data.items.0.name', 'Development-SEP2026 Website')->assertJsonPath('data.items.0.quantity', 2.5);
         $this->prepare($ids, 'member')->assertJsonPath('data.items.0.name', 'Ada Lovelace');
         $this->prepare($ids, 'summary')
             ->assertJsonPath('data.items.0.name', 'Time')
@@ -351,7 +351,7 @@ final class BillingApiTest extends TestCase
         $second = $this->entry($this->pricing, 90, '2026-09-02');
         $this->entry($this->task('Theirs', null, 43), 60, '2026-09-03');
 
-        $this->prepareBody(['task_ids' => [(int) $this->landing->id, (int) $this->pricing->id]])
+        $this->prepareBody(['task_ids' => [(int) $this->landing->id, (int) $this->pricing->id], 'grouping' => 'task'])
             ->assertOk()
             ->assertJsonPath('data.customer_id', self::CUSTOMER)
             ->assertJsonPath('data.total', 15000)
@@ -371,7 +371,7 @@ final class BillingApiTest extends TestCase
         $this->entry($this->pricing, 90, '2026-09-02');
         $this->entry($this->task('Ad hoc call', null), 45, '2026-09-03');
 
-        $this->prepareBody(['project_id' => (int) $this->website->id])
+        $this->prepareBody(['project_id' => (int) $this->website->id, 'grouping' => 'task'])
             ->assertOk()
             ->assertJsonPath('data.total', 15000)
             ->assertJsonPath('data.items.0.name', '#1 Landing page')
@@ -405,7 +405,7 @@ final class BillingApiTest extends TestCase
             ->assertJsonPath('error', 'nothing_to_invoice')
             ->assertJsonPath('message', 'No unbilled billable time on the selected tasks.');
 
-        $this->prepareBody(['project_id' => (int) $this->website->id])
+        $this->prepareBody(['project_id' => (int) $this->website->id, 'grouping' => 'task'])
             ->assertStatus(422)
             ->assertJsonPath('error', 'nothing_to_invoice');
     }

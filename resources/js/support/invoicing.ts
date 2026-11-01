@@ -7,6 +7,7 @@ import {
   fetchCompanyInvoiceDefaults,
   fetchExchangeRate,
   fetchNextInvoiceNumber,
+  fetchTaxType,
   listInvoiceTemplates,
   prepareInvoice,
 } from '@/api/billing'
@@ -25,6 +26,7 @@ import { toDateString } from '@/support/format'
 import { errorCode, errorStatus } from '@/support/http'
 import type { Translate } from '@/support/i18n'
 import type { Notify } from '@/support/page'
+import type { HostTaxType } from '@/api/billing'
 import type {
   BillingSelection,
   CompanyInvoiceDefaults,
@@ -176,6 +178,20 @@ async function run(deps: InvoicingDeps, selection: BillingSelection): Promise<bo
   const homeCurrencyId = defaults?.currency?.id ?? null
   const foreign = homeCurrencyId !== null && currencyId !== null && currencyId !== homeCurrencyId
 
+  // A company that charges tax on its time gets it on every invoice, or none
+  // is created: an invoice quietly missing its GST is worse than no invoice.
+  let taxType: HostTaxType | null = null
+
+  if (typeof prepared.tax_type_id === 'number' && prepared.tax_type_id > 0) {
+    try {
+      taxType = await fetchTaxType(client, prepared.tax_type_id)
+    } catch (error: unknown) {
+      notify('error', errorMessage(error, t('tasks_projects.billing.tax_failed')))
+
+      return false
+    }
+  }
+
   const invoiceNumber = await resolveNumber(deps, defaults, prepared.customer_id)
 
   if (invoiceNumber === null) {
@@ -198,6 +214,8 @@ async function run(deps: InvoicingDeps, selection: BillingSelection): Promise<bo
     exchangeRate,
     dueDate: defaultDueDate(prepared.invoice_date, defaults),
     templateName: defaults?.defaultTemplate ?? templates[0]?.name ?? '',
+    taxType,
+    taxPerItem: defaults?.taxPerItem ?? false,
   })
 
   debug('creating', payload)
@@ -332,6 +350,31 @@ interface InvoiceFields {
   exchangeRate: number | null
   dueDate: string | null
   templateName: string
+  /** The tax to charge on the lines, already read from the host. */
+  taxType: HostTaxType | null
+  taxPerItem: boolean
+}
+
+/** What a tax type charges on an amount, in the invoice's minor units. */
+function taxAmount(taxType: HostTaxType, base: number): number {
+  if (taxType.calculation_type === 'fixed') {
+    return taxType.fixed_amount ?? 0
+  }
+
+  return Math.round((base * Number(taxType.percent ?? 0)) / 100)
+}
+
+/** The tax row the host's own form would send for this tax type. */
+function taxRow(taxType: HostTaxType, base: number): Record<string, unknown> {
+  return {
+    tax_type_id: taxType.id,
+    name: taxType.name,
+    percent: Number(taxType.percent ?? 0),
+    calculation_type: taxType.calculation_type ?? 'percentage',
+    fixed_amount: taxType.fixed_amount ?? null,
+    compound_tax: Boolean(taxType.compound_tax),
+    amount: taxAmount(taxType, base),
+  }
 }
 
 /**
@@ -343,6 +386,22 @@ interface InvoiceFields {
  * recomputes from the same lines before it saves anything.
  */
 function invoicePayload(payload: PreparedInvoice, fields: InvoiceFields): InvoicePayload {
+  const { taxType } = fields
+  const perItem = taxType !== null && fields.taxPerItem
+  const items = payload.items.map((item) => {
+    if (!perItem) {
+      return { ...item }
+    }
+
+    const row = taxRow(taxType, item.total)
+
+    return { ...item, taxes: [row], tax: row.amount as number }
+  })
+  const taxes = taxType !== null && !perItem ? [taxRow(taxType, payload.sub_total)] : []
+  const tax = perItem
+    ? items.reduce((sum, item) => sum + item.tax, 0)
+    : taxes.reduce((sum, row) => sum + (row.amount as number), 0)
+
   return {
     invoice_date: payload.invoice_date,
     due_date: fields.dueDate,
@@ -355,14 +414,14 @@ function invoicePayload(payload: PreparedInvoice, fields: InvoiceFields): Invoic
     discount: payload.discount,
     discount_type: payload.discount_type,
     discount_val: payload.discount_val,
-    tax: payload.tax,
+    tax,
     sub_total: payload.sub_total,
-    total: payload.total,
+    total: payload.sub_total - payload.discount_val + tax,
     tax_included: false,
     notes: payload.notes,
     template_name: fields.templateName,
-    items: payload.items.map((item) => ({ ...item })),
-    taxes: [],
+    items,
+    taxes,
   }
 }
 

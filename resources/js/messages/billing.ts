@@ -18,6 +18,7 @@ export const billingMessages = {
 
         // What the sequence says when it cannot finish.
         prepare_failed: 'Unable to prepare the invoice.',
+        tax_failed: 'Unable to read the tax type for this invoice. Nothing was created.',
         create_failed: 'Unable to create the invoice.',
         rate_failed: 'Unable to read the exchange rate; the invoice was created without one.',
         forbidden: 'You are not allowed to invoice time.',

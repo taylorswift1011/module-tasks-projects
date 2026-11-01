@@ -56,7 +56,7 @@ const range = reactive<{ from: string; to: string }>({ from: '', to: '' })
 const chosen = ref<UnbilledCustomer | null>(null)
 const unbilled = ref<UnbilledTime | null>(null)
 const loadingEntries = ref(false)
-const grouping = ref<BillingGrouping>('task')
+const grouping = ref<BillingGrouping>('project')
 const selected = ref<number[]>([])
 
 const busy = computed<boolean>(() => invoicingStore.busy)

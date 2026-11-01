@@ -16,6 +16,7 @@ return [
     'lock_invoiced_tasks' => 'Lock tasks once they are invoiced',
     'hide_invoiced_on_board' => 'Hide invoiced tasks on the board',
 
+    'invoice_tax_type_id' => 'Tax type charged on time lines (tax type id, 0 for none)',
     'invoice_project_heading' => 'Show the project name above the task',
     'invoice_task_description' => 'Show the task description',
     'invoice_entry_dates' => 'Show the date of each time entry',

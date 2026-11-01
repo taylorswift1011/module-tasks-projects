@@ -51,6 +51,31 @@ final class ModuleSettings
         return max(0, $rate);
     }
 
+    /**
+     * The tax type the invoice lines are charged, or null for none.
+     *
+     * Stored as the host's tax type id; the browser reads the rate from the
+     * host itself when it builds the invoice, so a rate change there is picked
+     * up without touching the module.
+     */
+    public function invoiceTaxTypeId(int $companyId): ?int
+    {
+        $id = (int) $this->read($companyId, 'invoice_tax_type_id', 0);
+
+        return $id > 0 ? $id : null;
+    }
+
+    /**
+     * The company's own timezone, as the host stores it, so an invoice note
+     * shows the day and time the work was done rather than UTC.
+     */
+    public function timezone(int $companyId): string
+    {
+        $zone = $this->settings->getCompany($companyId, 'time_zone');
+
+        return is_string($zone) && in_array($zone, \DateTimeZone::listIdentifiers(), true) ? $zone : 'UTC';
+    }
+
     /** Billing increment applied when a time entry is saved. */
     public function roundingMinutes(int $companyId): int
     {

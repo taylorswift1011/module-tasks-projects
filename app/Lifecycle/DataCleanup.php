@@ -17,6 +17,7 @@ final class DataCleanup implements DataCleanupContract
         'rounding_minutes',
         'rounding_direction',
         'week_start',
+        'invoice_tax_type_id',
     ];
 
     public function __construct(private readonly SettingsStore $settings) {}

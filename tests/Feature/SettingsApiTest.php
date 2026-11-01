@@ -24,6 +24,7 @@ final class SettingsApiTest extends TestCase
             'rounding_minutes' => ModuleSettings::DEFAULT_ROUNDING_MINUTES,
             'rounding_direction' => Rounding::NEAREST,
             'week_start' => ModuleSettings::DEFAULT_WEEK_START,
+            'invoice_tax_type_id' => 0,
             'members_see_all_time' => false,
             'auto_start_tasks' => false,
             'lock_invoiced_tasks' => false,

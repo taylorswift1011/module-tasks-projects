@@ -41,6 +41,7 @@ final class SettingsController extends Controller
             'rounding_minutes' => $this->settings->roundingMinutes($companyId),
             'rounding_direction' => $this->settings->roundingDirection($companyId),
             'week_start' => $this->settings->weekStart($companyId),
+            'invoice_tax_type_id' => $this->settings->invoiceTaxTypeId($companyId) ?? 0,
             ...$flags,
             'rounding_increments' => ModuleSettings::ROUNDING_INCREMENTS,
         ]]);
