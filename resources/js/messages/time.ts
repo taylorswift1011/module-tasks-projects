@@ -32,6 +32,9 @@ export const timeMessages = {
         unbilled: 'Unbilled',
         stamped_notice:
           'This entry is already on an invoice. Invoiced time is history and cannot be changed.',
+        running_notice:
+          'This timer is still running. You can correct when it started, its description and whether it is billable; the end and the length are set when it stops.',
+        running_start_future: 'A running timer cannot start in the future.',
         created: 'The time entry was saved.',
         updated: 'The time entry was updated.',
         deleted: 'The time entry was deleted.',

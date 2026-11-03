@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Carbon;
 use Modules\TasksProjects\Application\Exceptions\EntriesAlreadyInvoiced;
+use Modules\TasksProjects\Application\Exceptions\RunningEntryLocked;
 use Modules\TasksProjects\Models\Task;
 use Modules\TasksProjects\Models\TimeEntry;
 use Modules\TasksProjects\Support\ModuleSettings;
@@ -26,6 +27,9 @@ final class TimeEntryService
 
     /** The fields an invoice owns once it has been raised against an entry. */
     private const STAMPED_FIELDS = ['task_id', 'started_at', 'ended_at', 'duration_minutes', 'billable'];
+
+    /** What a running timer does not own yet: its end, its length, its money and its task. */
+    private const RUNNING_FIELDS = ['task_id', 'ended_at', 'duration_minutes', 'rate'];
 
     public function __construct(
         private readonly RateResolver $rates,
@@ -90,6 +94,10 @@ final class TimeEntryService
             return $this->updateStamped($entry, $attributes);
         }
 
+        if ($entry->isRunning()) {
+            return $this->updateRunning($entry, $attributes);
+        }
+
         $task = $this->tasks->findForCompany($companyId, (int) ($attributes['task_id'] ?? $entry->task_id));
 
         if ((int) $task->id !== (int) $entry->task_id) {
@@ -125,6 +133,55 @@ final class TimeEntryService
             : $this->rates->resolve($task, (int) $entry->user_id, $this->settings);
 
         $entry->amount = self::amountFor((int) $entry->duration_minutes, (int) $entry->rate);
+        $entry->save();
+
+        return $entry;
+    }
+
+    /**
+     * Correct a timer that is still running.
+     *
+     * The clock keeps running: a corrected start moves the elapsed time the
+     * stop will measure, and nothing else about the entry is decided until
+     * then. The end, the length, the rate and the task are refused rather than
+     * quietly ignored, and a start in the future is refused because it would
+     * make the timer count backwards.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    private function updateRunning(TimeEntry $entry, array $attributes): TimeEntry
+    {
+        $locked = array_values(array_filter(
+            self::RUNNING_FIELDS,
+            static fn (string $field): bool => self::wouldChange($entry, $field, $attributes),
+        ));
+
+        if ($locked !== []) {
+            throw RunningEntryLocked::forFields((int) $entry->id, $locked);
+        }
+
+        if (array_key_exists('started_at', $attributes)) {
+            if ($attributes['started_at'] === null) {
+                throw RunningEntryLocked::startRequired((int) $entry->id);
+            }
+
+            $startedAt = Carbon::parse($attributes['started_at']);
+
+            if ($startedAt->isFuture()) {
+                throw RunningEntryLocked::startInTheFuture((int) $entry->id);
+            }
+
+            $entry->started_at = $startedAt;
+        }
+
+        if (array_key_exists('description', $attributes)) {
+            $entry->description = $attributes['description'];
+        }
+
+        if (array_key_exists('billable', $attributes)) {
+            $entry->billable = (bool) $attributes['billable'];
+        }
+
         $entry->save();
 
         return $entry;

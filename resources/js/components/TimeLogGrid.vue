@@ -118,10 +118,6 @@ function openCreate(): void {
 }
 
 function openEdit(entry: TimeEntry): void {
-  if (entry.is_running) {
-    return
-  }
-
   editing.value = entry
   modalOpen.value = true
 }
@@ -224,7 +220,7 @@ async function remove(entry: TimeEntry): Promise<void> {
             v-for="entry in entries"
             :key="entry.id"
             class="border-t border-line-light"
-            :class="entry.is_running ? 'bg-primary-50' : 'cursor-pointer hover:bg-hover'"
+            :class="entry.is_running ? 'cursor-pointer bg-primary-50 hover:bg-primary-100' : 'cursor-pointer hover:bg-hover'"
             @click="openEdit(entry)"
           >
             <td class="px-4 py-2.5 whitespace-nowrap">

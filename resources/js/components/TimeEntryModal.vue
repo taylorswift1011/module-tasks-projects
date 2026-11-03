@@ -81,6 +81,13 @@ const isEdit = computed<boolean>(() => props.entry !== null)
 /** Invoiced time belongs to the invoice: the form only ever shows it. */
 const isStamped = computed<boolean>(() => props.entry?.invoice_id != null)
 
+/**
+ * A timer that has not been stopped yet. Only when it started, what it says
+ * and whether it is billable can be corrected; its end and length are decided
+ * when it stops.
+ */
+const isRunning = computed<boolean>(() => props.entry?.is_running === true)
+
 const title = computed<string>(() => {
   if (isStamped.value) {
     return t('tasks_projects.time.view_entry')
@@ -110,7 +117,7 @@ function reset(): void {
   form.end = entry?.ended_at ? localTimeOf(entry.ended_at) : ''
   form.description = entry?.description ?? ''
   form.billable = entry ? entry.billable : (task.value?.billable ?? true)
-  form.mode = entry !== null && matchesRange(entry) ? 'range' : 'duration'
+  form.mode = entry !== null && (entry.is_running || matchesRange(entry)) ? 'range' : 'duration'
 
   if (form.date === '') {
     form.date = props.defaultDate ?? formatLocalDate(new Date())
@@ -203,10 +210,14 @@ function payload(): TimeEntryInput | null {
     messages.duration_minutes = t('tasks_projects.time.duration_invalid')
   }
 
-  const endedAt = form.mode === 'range' ? localInstant(form.date, form.end) : null
+  const endedAt = form.mode === 'range' && !isRunning.value ? localInstant(form.date, form.end) : null
 
-  if (form.mode === 'range' && (endedAt === null || startedAt === null || endedAt <= startedAt)) {
+  if (form.mode === 'range' && !isRunning.value && (endedAt === null || startedAt === null || endedAt <= startedAt)) {
     messages.ended_at = t('tasks_projects.time.range_invalid')
+  }
+
+  if (isRunning.value && startedAt !== null && new Date(startedAt).getTime() > Date.now()) {
+    messages.started_at = t('tasks_projects.time.running_start_future')
   }
 
   errors.value = messages
@@ -220,6 +231,10 @@ function payload(): TimeEntryInput | null {
     started_at: startedAt,
     description: form.description.trim() || null,
     billable: form.billable,
+  }
+
+  if (isRunning.value) {
+    return body
   }
 
   if (form.mode === 'duration' && minutes !== null) {
@@ -309,6 +324,13 @@ async function remove(): Promise<void> {
           {{ t('tasks_projects.time.stamped_notice') }}
         </p>
 
+        <p
+          v-else-if="isRunning"
+          class="rounded-md bg-alert-info-bg px-3 py-2 text-sm text-alert-info-text"
+        >
+          {{ t('tasks_projects.time.running_notice') }}
+        </p>
+
         <BaseInputGroup
           :label="t('tasks_projects.time.fields.task')"
           :error="errors.task_id"
@@ -320,7 +342,7 @@ async function remove(): Promise<void> {
             v-else
             :model-value="task"
             :options="loadTasks"
-            :disabled="isStamped"
+            :disabled="isStamped || isRunning"
             :invalid="Boolean(errors.task_id)"
             :placeholder="t('tasks_projects.time.fields.task_placeholder')"
             :initial-search="task?.name ?? ''"
@@ -347,7 +369,7 @@ async function remove(): Promise<void> {
             />
           </BaseInputGroup>
 
-          <BaseInputGroup :label="t('tasks_projects.time.fields.mode')">
+          <BaseInputGroup v-if="!isRunning" :label="t('tasks_projects.time.fields.mode')">
             <div class="inline-flex overflow-hidden rounded-md border border-line-default">
               <button
                 v-for="option in MODES"
@@ -400,6 +422,7 @@ async function remove(): Promise<void> {
           </BaseInputGroup>
 
           <BaseInputGroup
+            v-if="!isRunning"
             :label="t('tasks_projects.time.fields.end')"
             :error="errors.ended_at"
             required
@@ -439,7 +462,7 @@ async function remove(): Promise<void> {
 
       <div class="flex items-center justify-between border-t border-line-default px-6 py-4">
         <BaseButton
-          v-if="isEdit && !isStamped"
+          v-if="isEdit && !isStamped && !isRunning"
           type="button"
           variant="danger"
           size="sm"
